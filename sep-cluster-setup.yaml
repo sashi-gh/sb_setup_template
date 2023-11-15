@@ -1,0 +1,89 @@
+
+# Name of the k8s Secret holding the Starburst License file
+starburstPlatformLicense: starburstdata
+
+# The enviroment setting is what you'll see on the main Web UI for the ENVIRONMENT name.
+# The sharedSecret is not a k8s Secret it is what the coordinator and worker will use
+# to confirm internal communications. More can be found in the SEP doc on this.
+environment: <cluster_name>
+sharedSecret: u70Qhhw9PsZmEgIo7Zqg3kIj3AJZ5/Mnyy5iyjcsgnceM+SSV+APSTisjlUHL
+
+# As a starting best practice always set the requests and limits memmory and CPU to the same thing.
+coordinator:
+  resources:
+    requests:
+      memory: "12Gi"
+      cpu: 3
+    limits:
+      memory: "12Gi"
+      cpu: 3
+
+  # This affinity will ensure the coordinator and worker are deployed in the sep node group.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: apps
+            operator: In
+            values: 
+            - sep
+
+  etcFiles:
+    properties:
+      log.properties: |
+        io.trino=DEBUG
+  additionalProperties: |
+    insights.persistence-enabled=true 
+    insights.metrics-persistence-enabled=true
+    insights.jdbc.url=jdbc:postgresql://<postgres_domain_name>:5432/eks_query_logger
+    insights.jdbc.user=postgres
+    insights.jdbc.password=<password>
+    insights.authorized-users=starburst_service
+
+  
+expose:
+  type: "loadBalancer"
+  loadBalancer:
+    name: "starburst"
+    ports:
+      http:
+        port: 8080
+# If you want the LB to have an internal IP and not a public facing one remove the comment below for the
+#  annoticatios line and the line for your cloud.
+    annotations: 
+      service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+      networking.gke.io/load-balancer-type: "Internal"
+
+worker:
+  replicas: 1
+  # The deploymentTerminatinoGracePeriodSeconds controls how long the worker waits before beginning the graceful shutdown process.
+  # The following values were lowered from their defautls for lab settings so when you run a helm upgrade or scale down it doesn't take so long. 
+  deploymentTerminationGracePeriodSeconds: 10 # default is 300; it is actually how long the graceful shutdown waits after it receives the SIGTERM
+  starburstWorkerShutdownGracePeriodSeconds: 120 # default is 120
+  resources:
+    requests:
+      memory: "12Gi"
+      cpu: 3
+    limits:
+      memory: "12Gi"
+      cpu: 3
+
+  # This affinity will ensure the coordinator and worker are deployed in the sep node group.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: apps
+            operator: In
+            values: 
+            - sep
+
+#
+# This copies the teradata drivers and SAP Hana drivers from the mounts from secrets to the plugin directories on the pods
+initFile: |
+  #!/bin/bash
+  # === The following line is the way you MUST start SEP to ensure you have graceful shutdown.
+  exec /usr/lib/starburst/bin/run-starburst

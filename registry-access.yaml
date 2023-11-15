@@ -1,0 +1,8 @@
+# 1. Find and Replace sashi.nareddi with your harbor username.
+# 2. Find and Replace 4DENe6#ryi%UvY with your harbor password.
+#    The username and password are stored in the AWS Secrets Mananger in secret harbor_non-automation.
+registryCredentials:
+  enabled: true
+  registry: harbor.starburstdata.net/starburstdata
+  username: <user-name>
+  password: <password>
