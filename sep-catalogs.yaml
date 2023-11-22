@@ -5,3 +5,13 @@ catalogs:
     connector.name=tpch
   jmx: |
     connector.name=jmx
+  postgresql: |
+    connector.name=postgresql
+    connection-url=jdbc:postgresql://<host>:5432/<db_name>
+    connection-user=<username>
+    connection-password=<password>
+    join-pushdown.strategy=EAGER
+    metadata.cache-ttl=2m
+    metadata.cache-missing=true
+    redirection.config-source=SERVICE
+    cache-service.uri=http://coordinator:8180    
